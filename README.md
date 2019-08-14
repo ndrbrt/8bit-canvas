@@ -5,3 +5,7 @@ A basic implementation of a canvas to draw pixel art, written in less than 250 r
 The idea is quite simple: we make a grid of tiny divs that represent the pixels and then we change a certain div bg color, according to the currently selected color, once the mouse clicks (or is "active") on that div.
 
 I made it because I needed a quick way to test different color combinations for some 8bit art - that's why you see the "color classes logic" with the 'shuffle/random colors' buttons.
+
+**Live version**: [ndrbrt.github.io/8bit-canvas/](https://ndrbrt.github.io/8bit-canvas/)
+
+![Screenshot](./screenshot.png)
