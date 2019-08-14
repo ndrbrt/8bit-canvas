@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <title>8bit Canvas</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script src="https://cdn.jsdelivr.net/npm/vue"></script>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        .grid-canvas {
+            display: grid;
+        }
+        .show-grid {
+            border: 1px solid rgba(80, 120, 255, 0.3);
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app" @mouseup="stopDrawing">
+
+        <button @click="save">Save</button>
+        <button @click="toggleGrid">Toggle grid</button>
+        
+        <div class="grid-canvas"
+        :style="{ gridTemplateColumns: `repeat(${cols}, ${cellSize})` }"
+        @mousedown="startDrawing"
+        @mouseup="stopDrawing">
+            
+                <div
+                    v-for="(cell, index) in cells" :key="index"
+                    :style="{ height: cellSize, width: cellSize, backgroundColor: cell.bgcolor }"
+                    :class="{ 'show-grid': showGrid }"
+                    @mouseover="colorize(index)"
+                    @click="colorizeClick(index)"
+                    @mousedown="colorizeClick(index)">
+                </div>
+            
+        </div>
+
+        <div class="classes-tools">
+            <div>
+                <input type="radio" v-model="selectedColorClass" :value="null" @click="enterEraseMode">
+                Eraser tool
+            </div>
+
+            <div v-for="(cls, index) in colorClasses" :key="index">
+                <input type="radio" v-model="selectedColorClass" :value="index" @click="exitEraseMode">
+                class {{ index }}
+                <input type="text" v-model="cls.color" @change="updateColor(index)">
+                <div
+                    style="display: inline-block; width: 15px; height: 15px;"
+                    :style="{ backgroundColor: cls.color }">
+                </div>
+            </div>
+
+            <button @click="addColorClass">Add class</button>
+        </div>
+
+        <button @click="shuffleColorClasses">Shuffle colors</button>
+        <button @click="randomColorClasses">Random colors</button>
+
+    </div>
+
+    <script>
+        const NUMBER_OF_COLS = 100;
+        const NUMBER_OF_ROWS = 50;
+        const CELL_SIZE = '10px';
+        const DEFAULT_COLOR = 'blue';
+
+        const shuffleArray = arr => arr  // https://gist.github.com/guilhermepontes/17ae0cc71fa2b13ea8c20c94c5c35dc4
+            .map(a => [Math.random(), a])
+            .sort((a, b) => a[0] - b[0])
+            .map(a => a[1]);
+        
+        const randomColor = () => {
+            const symbols = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'];
+            let color = '#';
+            for (let i = 0; i < 6; i++) {
+                color += symbols[Math.floor(Math.random() * symbols.length)];
+            }
+            return color;
+        }
+
+        window.app = new Vue({
+            el: '#app',
+            data: {
+                cols: NUMBER_OF_COLS,
+                rows: NUMBER_OF_ROWS,
+                cells: [],
+                cellSize: CELL_SIZE,
+                drawingActive: false,
+                eraseMode: false,
+                selectedColorClass: 0,
+                colorClasses: [],
+                showGrid: false,
+            },
+            created: function () {
+                if (window.localStorage.getItem('data') !== null) {
+                    let data = JSON.parse(window.localStorage.getItem('data'));
+                    this.initFromSavedData(data);
+                } else {
+                    this.init();
+                }
+            },
+            methods: {
+                init: function () {
+                    // Init an empty grid
+                    for (let i = 0; i < this.rows * this.cols; i ++) {
+                        this.cells.push({
+                            bgcolor: this.computeEmptyCellColor(i),
+                            colorClassIndex: null
+                        })
+                    }
+
+                    // Set a default colorClass
+                    this.colorClasses.push({ color: DEFAULT_COLOR });
+                },
+                initFromSavedData: function (data) {
+                    for (let key in data) {
+                        this[key] = data[key]
+                    }
+                },
+                colorize: function (index) {
+                    if (this.drawingActive) {
+                        this.draw(index);
+                    }
+                },
+                colorizeClick: function (index) {
+                    this.draw(index);
+                },
+                draw: function (index) {
+                    let color;
+                    if (this.eraseMode)
+                        color = this.computeEmptyCellColor(index);
+                    else
+                        color = this.colorClasses[this.selectedColorClass].color;
+                    this.cells[index].bgcolor = color;
+                    this.cells[index].colorClassIndex = this.selectedColorClass;
+                },
+                enterEraseMode: function () {
+                    this.eraseMode = true;
+                },
+                exitEraseMode: function () {
+                    this.eraseMode = false;
+                },
+                updateColor: function (colorClassIndex) {
+                    this.cells.map(cell => {
+                        if (cell.colorClassIndex === colorClassIndex) {
+                            cell.bgcolor = this.colorClasses[colorClassIndex].color;
+                        }
+                    })
+                },
+                updateAllColors: function () {
+                    /**
+                    *
+                    * Trigger cells update that wont't be tracked automatically by Vue
+                    * after for example the shuffleColorClasses function
+                    *
+                    */
+                    this.cells.map(cell => {
+                        if (cell.colorClassIndex !== null)
+                            cell.bgcolor = this.colorClasses[cell.colorClassIndex].color;
+                    })
+                },
+                addColorClass: function () {
+                    this.colorClasses.push({ color: DEFAULT_COLOR });
+                    this.selectedColorClass = this.colorClasses.length - 1;
+                },
+                computeRowIndex: function (cellIndex) {
+                    return Math.floor(cellIndex / this.cols);
+                },
+                computeEmptyCellColor: function (cellIndex) {
+                    /**
+                    *
+                    * Either an empty cell background is white o light grey
+                    * (to make the classical transparent grid BG effect)
+                    * TODO rewrite this more concise??
+                    *
+                    */
+
+                    // If cols number is even, it's quite straightforward
+                    if (this.cols % 2 != 0) {
+                        return cellIndex % 2 === 0 ? '' : '#eee'
+                    }
+
+                    // Otherwise, if cols number is odd, the first cell
+                    // of a new row, must be the same color of the last cell
+                    // from the previous row
+                    const currentRow = this.computeRowIndex(cellIndex);
+                    const cellIndexIsEven = () => cellIndex % 2 === 0;
+                    const currentRowIsEven = () => currentRow % 2 === 0;
+                    if (currentRowIsEven()) {
+                        return cellIndexIsEven() ? '' : '#eee';
+                    } else {
+                        return cellIndexIsEven() ? '#eee' : '';
+                    }
+                },
+                startDrawing: function () {
+                    this.drawingActive = true;
+                },
+                stopDrawing: function () {
+                    this.drawingActive = false
+                },
+                shuffleColorClasses: function () {
+                    this.colorClasses = shuffleArray(this.colorClasses);
+                    this.updateAllColors();
+
+                },
+                randomColorClasses: function () {
+                    this.colorClasses.map(cls => cls.color = randomColor());
+                    this.updateAllColors();
+                },
+                toggleGrid: function () {
+                    this.showGrid = !this.showGrid;
+                },
+                save: function () {
+                    let dout = {
+                        cols: this.cols,
+                        rows: this.rows,
+                        cells: this.cells,
+                        cellSize: this.cellSize,
+                        drawingActive: this.drawingActive,
+                        eraseMode: this.eraseMode,
+                        selectedColorClass: this.selectedColorClass,
+                        colorClasses: this.colorClasses
+                    }
+                    window.localStorage.setItem('data', JSON.stringify(dout));
+                }
+            }
+        })
+    </script>
+</body>
+
+</html>
