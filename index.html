@@ -170,6 +170,7 @@
                 addColorClass: function () {
                     this.colorClasses.push({ color: DEFAULT_COLOR });
                     this.selectedColorClass = this.colorClasses.length - 1;
+                    this.exitEraseMode();
                 },
                 computeRowIndex: function (cellIndex) {
                     return Math.floor(cellIndex / this.cols);
