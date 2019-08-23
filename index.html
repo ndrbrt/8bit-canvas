@@ -180,26 +180,10 @@
                     *
                     * Either an empty cell background is white o light grey
                     * (to make the classical transparent grid BG effect)
-                    * TODO rewrite this more concise??
                     *
                     */
 
-                    // If cols number is even, it's quite straightforward
-                    if (this.cols % 2 != 0) {
-                        return cellIndex % 2 === 0 ? '' : '#eee'
-                    }
-
-                    // Otherwise, if cols number is odd, the first cell
-                    // of a new row, must be the same color of the last cell
-                    // from the previous row
-                    const currentRow = this.computeRowIndex(cellIndex);
-                    const cellIndexIsEven = () => cellIndex % 2 === 0;
-                    const currentRowIsEven = () => currentRow % 2 === 0;
-                    if (currentRowIsEven()) {
-                        return cellIndexIsEven() ? '' : '#eee';
-                    } else {
-                        return cellIndexIsEven() ? '#eee' : '';
-                    }
+                    return (cellIndex % this.cols + this.computeRowIndex(cellIndex) % 2) % 2 ? '' : '#eee';
                 },
                 startDrawing: function () {
                     this.drawingActive = true;
